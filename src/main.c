@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "chip8.h"
 
 int main(int argc, char ** argv){
 
@@ -8,11 +9,16 @@ int main(int argc, char ** argv){
     }
 
     char * rom = argv[1];
-    printf("Loading rom => %s ...\n", rom);
+    printf("[INFO] - ROM selected: %s ...\n", rom);
 
     //--------------------------------------
     // Initialization
     //--------------------------------------
+    Chip8* chip8 = initChip8();
+    fprintf(stdout, "[INFO] - allocated Chip-8 at 0x%p\n", (void*)chip8);
+
+    loadROMChip8(chip8, rom);
+    fprintf(stdout, "[INFO] - loading ROM: %s\n", rom);
 
     //--------------------------------------
     // Emulation
@@ -22,7 +28,7 @@ int main(int argc, char ** argv){
     //--------------------------------------
     // Cleanup
     //--------------------------------------
-
+    destroyChip8(chip8);
 
     return 0;
 }
