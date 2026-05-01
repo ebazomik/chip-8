@@ -5,8 +5,9 @@
 #include <string.h>
 #include <time.h>
 #include <fcntl.h>
-#include <errno.h>
 #include <unistd.h>
+#include <errno.h>
+
 
 #define CHIP8_MEMORY_SIZE 0x1000
 #define CHIP8_START_PROGRAM 0x200
@@ -39,8 +40,8 @@ Chip8* initChip8(){
 
     Chip8* chip8 = malloc(sizeof(Chip8));
     if(chip8 == NULL){
-       fprintf(stderr, "Error on initialize Chip8\n");
-       exit(1);
+        LOG_ERROR("Error on initialize Chip8");
+        exit(1);
     }
 
     // Clean memory after malloc
@@ -74,14 +75,15 @@ void destroyChip8(Chip8 *chip8){
 void loadROMChip8(Chip8* chip8, char* rom){
 
     if(chip8 == NULL || rom == NULL){
-        fprintf(stderr, "[ERROR] - invalid parameters of loadROMChip8\n");
+        LOG_ERROR("[ERROR] - invalid parameters of loadROMChip8");
         exit(1);
     }
 
+    errno = 0;
     int f = open(rom, O_RDONLY);
 
     if(f == -1){
-        fprintf(stderr, "[ERROR] - when try to open rom: %s\n", strerror(errno));
+        LOG_ERROR_ARG("[ERROR] - when try to open rom: %s", strerror(errno));
         exit(1);
     }
 
@@ -89,11 +91,11 @@ void loadROMChip8(Chip8* chip8, char* rom){
     off_t fsize = lseek(f, 0, SEEK_END);
 
     if(fsize <= 0){
-        fprintf(stderr, "[ERROR] - ROM file is empty\n");
+        LOG_ERROR("[ERROR] - ROM file is empty");
         exit(1);
     }
     if(fsize > CHIP8_MAX_PROGRAM_SIZE){
-        fprintf(stderr, "[ERROR] - size of ROM is too big: %ld\n", fsize);
+    LOG_ERROR_ARG("[ERROR] - size of ROM is too big: %ld\n", fsize);
         exit(1);
     }
 
@@ -105,8 +107,125 @@ void loadROMChip8(Chip8* chip8, char* rom){
     close(f);
 
     if(bytes_readed != fsize){
-        fprintf(stderr, "[ERROR] - Failed to read ROM: read %ld of %ld bytes\n", bytes_readed, fsize);
+        LOG_ERROR_ARG("[ERROR] - Failed to read ROM: read %ld of %ld bytes\n", bytes_readed, fsize);
         exit(1);
+    }
+
+    return;
+}
+
+void chip8Step(Chip8* chip8){
+
+    if(chip8->pc >= 4095){
+        LOG_ERROR_ARG("Can't increment pc: 0x%03x", chip8->pc);
+        exit(1);
+    }
+
+    unsigned short opcode = GET_OPCODE(chip8);
+    chip8->opcode = opcode;
+    chip8->pc += 2;
+    executeOpcode(chip8, opcode);
+
+    return;
+}
+
+
+void executeOpcode(Chip8 *chip8, short opcode){
+
+    // Every opcode has its own specific instruction.
+    // The first hex digit (0x[n]) determines the instruction type.
+    // Based on the instruction, the remaining digits represent:
+    //
+    // - X, Y: register indices (4 bits each, 0-15)
+    // - N:    4-bit value (0-15)
+    // - NN:   8-bit value (0-255)
+    // - NNN:  12-bit memory address (0-4095), used for jumps/calls
+    //
+    // Not every instruction uses all of these.
+    // The instruction type decides whether to interpret the digits as N, NN, or NNN.
+    //
+    // For deep in CHIP_8 instructions:
+    // https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set
+
+    unsigned char  X   = (opcode & 0x0F00) >> 8;
+    unsigned char  Y   = (opcode & 0x00F0) >> 4;
+    unsigned short N   = opcode & 0x000F;
+    unsigned short NN  = opcode & 0x00FF;
+    unsigned short NNN = opcode & 0x0FFF;
+
+    (void) X;
+    (void) Y;
+    (void) N;
+    (void) NN;
+    (void) NNN;
+
+    switch((opcode & 0xF00) >> 12){
+        case 0x0: {
+
+        } break;
+
+        case 0x1: {
+
+        } break;
+
+        case 0x2: {
+
+        } break;
+
+        case 0x3: {
+
+        } break;
+
+        case 0x4: {
+
+        } break;
+        case 0x5: {
+
+        } break;
+
+        case 0x6: {
+
+        } break;
+
+        case 0x7: {
+
+        } break;
+
+        case 0x8: {
+
+        } break;
+
+        case 0x9: {
+
+        } break;
+        case 0xA: {
+
+        } break;
+
+        case 0xB: {
+
+        } break;
+
+        case 0xC: {
+
+        } break;
+
+        case 0xD: {
+
+        } break;
+
+        case 0xE: {
+
+        } break;
+        case 0xF: {
+
+        } break;
+
+
+        default:
+            LOG_ERROR("Unreachable default case in chipExecuteCode");
+            exit(1);
+            return;
     }
 
     return;

@@ -1,6 +1,8 @@
 #ifndef CHIP8_H_
 #define CHIP8_H_
 
+
+
 //---------------------------------------
 // Sturct
 // --------------------------------------
@@ -73,9 +75,42 @@ typedef struct Chip8 Chip8;
 
 Chip8* initChip8();
 
+// Logging info - normal and with additional args.
+#define LOG_INFO(info)  \
+    do{ \
+        fprintf(strout, "[INFO] - " info "\n"); \
+    } while(0);
+
+#define LOG_INFO_ARG(info, ...) \
+    do{ \
+        fprintf(stdout, "[INFO] - " info "\n", ##__VA_ARGS__);  \
+    } while(0)
+
+// Logging errors - normal and with additional args.
+#define LOG_ERROR(error) \
+    do{ \
+        fprintf(stderr, "\033[0;31m[ERROR] - " error "\033[0m\n");  \
+    } while(0)
+
+#define LOG_ERROR_ARG(error, ...) \
+    do{ \
+        fprintf(stderr, "\033[0;31m[ERROR] - " error "\033[0m\n", ##__VA_ARGS__);  \
+    } while(0)
+
+
+// Every opcode in chip8 is 2 bytes long.
+// For recover and read correct opcode, shift 8bit from first chunk of 8bit memory
+// and merge with next 8it chunk.
+#define GET_OPCODE(chip8) \
+    ((unsigned short)(chip8->memory[chip8->pc] << 8) | (unsigned short)(chip8->memory[chip8->pc]))
+
 void destroyChip8(Chip8* chip8);
 
 void loadROMChip8(Chip8* chip8, char* rom);
+
+void chip8Step(Chip8* chip8);
+
+void executeOpcode(Chip8* chip8, short opcode);
 
 
 #endif // CHIP8_H_

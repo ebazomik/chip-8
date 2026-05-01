@@ -9,16 +9,16 @@ int main(int argc, char ** argv){
     }
 
     char * rom = argv[1];
-    printf("[INFO] - ROM selected: %s ...\n", rom);
+    LOG_INFO_ARG("[INFO] - ROM selected: %s", rom);
 
     //--------------------------------------
     // Initialization
     //--------------------------------------
     Chip8* chip8 = initChip8();
-    fprintf(stdout, "[INFO] - allocated Chip-8 at 0x%p\n", (void*)chip8);
+    LOG_INFO_ARG("[INFO] - allocated Chip-8 at 0x%p", (void*)chip8);
 
     loadROMChip8(chip8, rom);
-    fprintf(stdout, "[INFO] - loading ROM: %s\n", rom);
+    LOG_INFO_ARG("[INFO] - loading ROM: %s", rom);
 
     //--------------------------------------
     // Emulation
