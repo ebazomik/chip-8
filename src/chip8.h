@@ -3,6 +3,12 @@
 
 
 
+#define CHIP8_MEMORY_SIZE 0x1000
+#define CHIP8_START_PROGRAM 0x200
+#define CHIP8_MAX_PROGRAM_SIZE (CHIP8_MEMORY_SIZE - CHIP8_START_PROGRAM)
+#define CHIP8_SCREEN_WIDTH 64
+#define CHIP8_SCREEN_HEIGHT 32
+
 //---------------------------------------
 // Sturct
 // --------------------------------------
@@ -32,7 +38,7 @@ struct Chip8 {
     unsigned short pc;
 
     // The original implementation of Chip-8 used 64x32 pixel monochrome display
-    unsigned char gfx[64 * 32];
+    unsigned char gfx[CHIP8_SCREEN_WIDTH * CHIP8_SCREEN_HEIGHT];
 
     // Used for determinate if screen need to be update.
     unsigned char should_draw;
@@ -78,7 +84,7 @@ Chip8* initChip8();
 // Logging info - normal and with additional args.
 #define LOG_INFO(info)  \
     do{ \
-        fprintf(strout, "[INFO] - " info "\n"); \
+        fprintf(stdout, "[INFO] - " info "\n"); \
     } while(0);
 
 #define LOG_INFO_ARG(info, ...) \

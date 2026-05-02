@@ -12,3 +12,4 @@ This implementation of Chip-8 was understood and written thanks to the lessons o
 Other resources:
 - [Cowgod's](http://devernay.free.fr/hacks/chip8/C8TECH10.HTM#0nnn)
 - [How to write an emulator (CHIP-8 interpreter) - Laurence Muller](https://multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter/)
+- [CHIP‐8 Instruction Set](https://github.com/mattmikolay/chip-8/wiki/CHIP%E2%80%908-Instruction-Set)

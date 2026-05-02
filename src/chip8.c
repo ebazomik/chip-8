@@ -9,10 +9,6 @@
 #include <errno.h>
 
 
-#define CHIP8_MEMORY_SIZE 0x1000
-#define CHIP8_START_PROGRAM 0x200
-#define CHIP8_MAX_PROGRAM_SIZE (CHIP8_MEMORY_SIZE - CHIP8_START_PROGRAM)
-
 unsigned char CHIP8_FONTSET[80] = {
   0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
   0x20, 0x60, 0x20, 0x20, 0x70, // 1
@@ -159,68 +155,173 @@ void executeOpcode(Chip8 *chip8, short opcode){
     (void) NN;
     (void) NNN;
 
-    switch((opcode & 0xF00) >> 12){
+    switch((opcode & 0xF000) >> 12){
+
+        // =====================================
+
         case 0x0: {
 
+            // 00E0 - Clear screen
+            if(NN == 0x0000){
+                memset(chip8->gfx, 0, CHIP8_SCREEN_WIDTH * CHIP8_SCREEN_HEIGHT);
+            }
+
+            // 00EE - Return from subroutine
+            else if (NNN == 0x00EE){
+                // The return address is saved on top of the stack by instruction 2NNN
+                chip8->pc = chip8->stack[chip8->sp];
+                chip8->sp--;
+            }
+
+            // 0NNN execute machine language from subroutine from address NNN
+            else {
+                LOG_INFO("Executing 0NNN");
+            }
+
         } break;
+
+        // =====================================
 
         case 0x1: {
-
+            // 1NNN - Jump to address NNN
+            chip8->pc = NNN;
         } break;
+
+        // =====================================
 
         case 0x2: {
+            // 2NNN - Execute subroutine starting at address NNN
 
+            // Verify if stack space is full before save new return address
+            if(chip8->sp == 16) LOG_ERROR("Call stack overflow");
+
+            chip8->stack[chip8->sp] = chip8->pc;
+            chip8->sp++;
+
+            // After saved return address in the stack, jump to the
+            // new address in program counter to execute new subroutine
+            chip8->pc = NNN;
         } break;
+
+        // =====================================
 
         case 0x3: {
+            // 3XNN - Skip the following instruction if the value of register VX equals NN
 
+            if(X >= 16){
+                LOG_ERROR_ARG("3XNN, invalid value for X: %d > 15", X);
+                exit(1);
+            }
+
+            if(chip8->V[X] == NN) chip8->pc += 2;
         } break;
+
+        // =====================================
 
         case 0x4: {
+            // 4XNN - Skip the following instruction if the value of register VX is not equal to NN
 
+            if(X >= 16){
+                LOG_ERROR_ARG("4XNN, invalid value for X: %d > 15", X);
+                exit(1);
+            }
+
+            if(chip8->V[X] != NN) chip8->pc += 2;
         } break;
+
+        // =====================================
+
         case 0x5: {
+            // 5XY0 - Skip the following instruction if the value of register VX is equal to the value of register VY
 
+            if(X >= 16){
+                LOG_ERROR_ARG("5XNN, invalid value for X: %d > 15", X);
+                exit(1);
+            }
+
+            if(Y >= 16){
+                LOG_INFO_ARG("5XYN, invalid value for Y: %d > 15", Y);
+                exit(1);
+            }
+
+            if(chip8->V[X] == chip8->V[Y]) chip8->pc += 2;
         } break;
+
+        // =====================================
 
         case 0x6: {
+            // 6XNN - Store number NN in register VX
 
+            if(X >= 16){
+                LOG_ERROR_ARG("6XNN, invalid value for X: %d > 15", X);
+                exit(1);
+            }
+
+            chip8->V[X] = NN;
         } break;
+
+        // =====================================
 
         case 0x7: {
+            // 7XNN - Add the value NN to register VX
 
+            if(X >= 16){
+                LOG_ERROR_ARG("7XNN, invalid value for X: %d > 15", X);
+                exit(1);
+            }
+
+            chip8->V[X] += NN;
         } break;
+
+        // =====================================
 
         case 0x8: {
-
+            // TODO
         } break;
+
+        // =====================================
 
         case 0x9: {
-
+            // TODO
         } break;
+
+        // =====================================
+
         case 0xA: {
-
+            // TODO
         } break;
+
+        // =====================================
 
         case 0xB: {
-
+            // TODO
         } break;
+
+        // =====================================
 
         case 0xC: {
-
+            // TODO
         } break;
+
+        // =====================================
 
         case 0xD: {
-
+            // TODO
         } break;
+
+        // =====================================
 
         case 0xE: {
-
+            // TODO
         } break;
+
+        // =====================================
+
         case 0xF: {
-
+            // TODO
         } break;
 
+        // =====================================
 
         default:
             LOG_ERROR("Unreachable default case in chipExecuteCode");
