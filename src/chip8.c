@@ -162,12 +162,12 @@ void executeOpcode(Chip8 *chip8, short opcode){
         case 0x0: {
 
             // 00E0 - Clear screen
-            if(NN == 0x0000){
+            if(N == 0x0000){
                 memset(chip8->gfx, 0, CHIP8_SCREEN_WIDTH * CHIP8_SCREEN_HEIGHT);
             }
 
             // 00EE - Return from subroutine
-            else if (NNN == 0x00EE){
+            else if (NN == 0x00EE){
                 // The return address is saved on top of the stack by instruction 2NNN
                 chip8->pc = chip8->stack[chip8->sp];
                 chip8->sp--;
@@ -276,7 +276,101 @@ void executeOpcode(Chip8 *chip8, short opcode){
         // =====================================
 
         case 0x8: {
-            // TODO
+
+            // 8XY0 - Store the value of register VY in register VX
+            if(N == 0x0000){
+                if(Y >= 16){
+                    LOG_ERROR_ARG("8XY0, invalid value for Y: %d > 15", Y);
+                    exit(1);
+                }
+
+                chip8->V[X] = chip8->V[Y];
+            }
+
+            // 8XY1 - Set VX to VX OR VY
+            else if(N == 0x0001){
+                chip8->V[X] |= chip8->V[Y];
+            }
+
+            // 8XY2 - Set VX to VX AND VY
+            else if(N == 0x0002){
+                chip8->V[X] &= chip8->V[Y];
+            }
+
+            // 8XY3 - Set VX to VX XOR VY
+            else if(N == 0x0003){
+                chip8->V[X] ^= chip8->V[Y];
+            }
+
+            // 8XY4 - Add the value of register VY to register VX
+            //      - Set VF to 01 if a carry occurs
+            //      - Set VF to 00 if a carry does not occur
+            else if(N == 0x0004){
+                chip8->V[X] += chip8->V[Y];
+
+                // Carry occurs when VX + VY > 255 (value overflow 8-bits register)
+                unsigned char carry = (chip8->V[X] + chip8->V[Y]) > 255;
+                if(carry){
+                    chip8->V[15] = 1;
+                } else {
+                    chip8->V[15] = 0;
+                }
+            }
+
+            // 8XY5 - Subtract the value of register VY from register VX
+            //      - Set VF to 00 if a borrow occurs
+            //      - Set VF to 01 if a borrow does not occur
+            else if(N == 0x0005){
+                chip8->V[X] = chip8->V[X] - chip8->V[Y];
+
+                // Borrow occurs when VX < VY
+                unsigned char noBorrow = chip8->V[X] >= chip8->V[Y];
+                if(noBorrow){
+                    chip8->V[15] = 1;
+                } else {
+                    chip8->V[15] = 0;
+                }
+            }
+
+            // 8XY6 - Store the value of register VY shifted right one bit in register VX¹
+            //      - Set register VF to the least significant bit prior to the shift
+            //      - VY is unchanged
+            else if(N == 0x0006){
+                unsigned char lsb = chip8->V[Y] & 0x1;
+                chip8->V[X] = chip8->V[Y] >> 1;
+
+                chip8->V[15] = lsb;
+            }
+
+            // 8XY7 - Set register VX to the value of VY minus VX
+            //      - Set VF to 00 if a borrow occurs
+            //      - Set VF to 01 if a borrow does not occur
+            else if(N == 0x0007){
+                chip8->V[X] = chip8->V[Y] - chip8->V[X];
+
+                unsigned char notBorrow = chip8->V[Y] >= chip8->V[X];
+                if(notBorrow){
+                    chip8->V[15] = 1;
+                } else {
+                    chip8->V[15] = 0;
+                }
+            }
+
+            // 8XYE - Store the value of register VY shifted left one bit in register VX¹
+            //      - Set register VF to the most significant bit prior to the shift
+            //      - VY is unchanged
+            else if (N == 0x000E) {
+                unsigned char msb = (chip8->V[Y] & 0x80) >> 7;
+                chip8->V[X] = chip8->V[Y] << 1;
+
+                chip8->V[15] = msb;
+            }
+
+            else {
+                LOG_ERROR_ARG("Unknown opcone 0x%x", opcode);
+                exit(1);
+            }
+
         } break;
 
         // =====================================
