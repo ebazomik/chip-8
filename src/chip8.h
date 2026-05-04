@@ -75,6 +75,27 @@ struct Chip8 {
 };
 typedef struct Chip8 Chip8;
 
+
+enum CHIP8_KEY {
+  CHIP8_KEY_1 = 0x01,
+  CHIP8_KEY_2 = 0x02,
+  CHIP8_KEY_3 = 0x03,
+  CHIP8_KEY_4 = 0x0C,
+  CHIP8_KEY_Q = 0x04,
+  CHIP8_KEY_W = 0x05,
+  CHIP8_KEY_E = 0x06,
+  CHIP8_KEY_R = 0x0D,
+  CHIP8_KEY_A = 0x07,
+  CHIP8_KEY_S = 0x08,
+  CHIP8_KEY_D = 0x09,
+  CHIP8_KEY_F = 0x0E,
+  CHIP8_KEY_Z = 0x0A,
+  CHIP8_KEY_X = 0x00,
+  CHIP8_KEY_C = 0x0B,
+  CHIP8_KEY_V = 0x0F,
+  CHIP8_KEY_UNDEFINED = 0x10
+};
+
 //--------------------------------------
 // Functions
 //--------------------------------------

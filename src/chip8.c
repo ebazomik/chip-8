@@ -367,7 +367,7 @@ void executeOpcode(Chip8 *chip8, short opcode){
             }
 
             else {
-                LOG_ERROR_ARG("Unknown opcone 0x%x", opcode);
+                LOG_ERROR_ARG("Unknown opcode 0x%x", opcode);
                 exit(1);
             }
 
@@ -376,44 +376,188 @@ void executeOpcode(Chip8 *chip8, short opcode){
         // =====================================
 
         case 0x9: {
-            // TODO
+            // 9XY0 - Skip the following instruction if the value of register VX
+            //        is not equal to the value of register VY
+            if(chip8->V[X] != chip8->V[Y]){
+               chip8->pc += 2;
+            }
         } break;
 
         // =====================================
 
         case 0xA: {
-            // TODO
+           // ANNN - Store memory address NNN in register I
+           chip8->I = NNN;
         } break;
 
         // =====================================
 
         case 0xB: {
-            // TODO
+            // BNNN - Jump to address NNN + V0
+            chip8->pc = chip8->V[0] + NNN;
         } break;
 
         // =====================================
 
         case 0xC: {
-            // TODO
+            // CXNN - Set VX to a random number with a mask of NN
+            chip8->V[X] = (unsigned char) ((rand() & 0xFF) & NN);
+
         } break;
 
         // =====================================
 
         case 0xD: {
-            // TODO
+            // DXYN - Draw a sprite at position VX, VY with N bytes of sprite data starting at the address stored in I
+            //        Set VF to 1 if any set pixels are changed to unset, and 0 otherwise
+
+            unsigned char x = chip8->V[X];
+            unsigned char y = chip8->V[Y];
+
+            chip8->V[15] = 0;
+
+            for (unsigned char row = 0; row <= N; row++){
+                // Reached max height of sprite
+                if(row + y >= CHIP8_SCREEN_HEIGHT) break;
+                unsigned char row_offset = chip8->memory[chip8->I + row];
+
+                for(unsigned char col = 0; col < 8; col++){
+                    unsigned char bit_value = row_offset & (0x80 >> col);
+
+                    if(bit_value != 0){
+                        unsigned char bit_index = (x + col) + (y + row) * CHIP8_SCREEN_WIDTH;
+                        if(chip8->gfx[bit_index] == 1){
+                            chip8->V[15] = 1;
+                        }
+
+                        chip8->gfx[bit_index] ^= 1;
+                    }
+                }
+            }
+
+            chip8->should_draw = 1;
+
         } break;
 
         // =====================================
 
         case 0xE: {
-            // TODO
+
+            // EX9E - Skip the following instruction if the key corresponding
+            //        to least 4 bits of register VX is pressed
+            if(NN == 0x009E){
+                unsigned char key_index = chip8->V[X] & 0x0F;
+                if(chip8->key[key_index] == 1){
+                    chip8->pc += 2;
+                }
+            }
+
+            // EXA1 - Skip the following instruction if the key corresponding
+            //        to least 4 bits register VX is not pressed
+            else if(NN == 0x00A1){
+                unsigned char key_index = chip8->V[X] & 0x0F;
+                if(chip8->key[key_index] == 0){
+                    chip8->pc += 2;
+                }
+            }
+
+            else {
+                LOG_ERROR_ARG("Unknown opcode 0x%x", opcode);
+                exit(1);
+            }
+
         } break;
 
         // =====================================
 
         case 0xF: {
-            // TODO
+            // FX07 - Store the current value of the delay timer in register VX
+            if(NN == 0x0007){
+                chip8->V[X] = chip8->delay_timer;
+            }
+
+            // FX0A - Wait for a keypress and store the result in register VX
+            else if(NN == 0x000A){
+                unsigned char key_pressed = 0;
+                for(unsigned char i = 0; i < 16; i++){
+                    if(chip8->key[i] != 0){
+                        chip8->V[X] = i;
+                        key_pressed = 1;
+                        break;
+                    }
+                }
+
+                if(!key_pressed) chip8->pc -= 2;
+            }
+
+            // FX15 - Set the delay timer to the value of register VX
+            else if(NN == 0x0015){
+                chip8->delay_timer = chip8->V[X];
+            }
+
+            // FX18 - Set the sound timer to the value of register VX
+            else if(NN == 0x0018){
+                chip8->sound_timer = chip8->V[X];
+            }
+
+           // FX1E - Add the value stored in register VX to register I
+            else if(NN == 0x001E){
+                chip8->I += chip8->V[X];
+            }
+
+            // FX29 - Set I to the memory address of the sprite data corresponding
+            //        to the hexadecimal digit stored in register VX
+            else if(NN == 0x0029){
+                chip8->I = 80 + (chip8->V[X] & 0x0F) * 0x5;
+            }
+
+            // FX33 - Store the binary-coded decimal equivalent of the value stored
+            //        in register VX at addresses I, I + 1, and I + 2
+            else if(NN == 0x0033){
+                unsigned char value = chip8->V[X];
+                chip8->memory[chip8->I + 0] = value / 100;
+                chip8->memory[chip8->I + 1] = (value % 100) / 10;
+                chip8->memory[chip8->I + 2] = (value % 100) % 10;
+            }
+
+            // FX55 - Store the values of registers V0 to VX inclusive in memory starting at address I
+            //        I is set to I + X + 1 after operation²
+            else if(NN == 0x0055){
+
+                if(chip8->I + X > CHIP8_MEMORY_SIZE){
+                    LOG_ERROR("Memory out of bound in FX55!");
+                    exit(1);
+                }
+
+                for(unsigned char i = 0; i <= X; i++){
+                    chip8->memory[chip8->I + i] = chip8->V[i];
+                }
+
+                chip8->I = chip8->I + X + 1;
+            }
+
+            // FX65 - Fill registers V0 to VX inclusive with the values stored in memory starting at address I
+            //        I is set to I + X + 1 after operation²
+            else if(NN == 0x0065){
+                if(chip8->I + X > CHIP8_MEMORY_SIZE){
+                    LOG_ERROR("Meory out of bound in FX65");
+                    exit(1);
+                }
+
+                for(unsigned char i = 0; i<= X; i++){
+                    chip8->V[i] = chip8->memory[chip8->I + i];
+                }
+
+                chip8->I = chip8->I + X + 1;
+            }
+
+            else {
+                LOG_INFO_ARG("Unknown opcode: 0x%x", opcode);
+                exit(1);
+            }
+
         } break;
+
 
         // =====================================
 
