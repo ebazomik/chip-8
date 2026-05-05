@@ -72,6 +72,9 @@ struct Chip8 {
     //
     unsigned char key[16];
 
+    // Bitmask for quirks
+    unsigned int quirks;
+
 };
 typedef struct Chip8 Chip8;
 
@@ -95,6 +98,21 @@ enum CHIP8_KEY {
   CHIP8_KEY_V = 0x0F,
   CHIP8_KEY_UNDEFINED = 0x10
 };
+
+typedef enum CHIP8_KEY CHIP8_KEY;
+
+enum CHIP8_QUIRK {
+    // 8XY6, 8XYE
+    QUIRK_SHIFT = 0x1,
+    // FX55, FX65
+    QUIRK_LOAD_STORE = 0x2,
+    // BNN
+    QUIRK_JUMP_REL = 0x4,
+    // 8XY1, 8XY2, 8XY3
+    QUIRK_VF_RESET = 0x8,
+};
+
+typedef enum CHIP8_QUIRK CHIP8_QUIRK;
 
 //--------------------------------------
 // Functions

@@ -55,6 +55,8 @@ Chip8* initChip8(){
     chip8->should_draw = 0; // Don't need draw at the start point.
     chip8->opcode = 0;      // Reset opcode value.
 
+    chip8->quirks = QUIRK_SHIFT | QUIRK_LOAD_STORE; // Set most common quirks
+
     srand(time(NULL));
 
     return chip8;
@@ -289,17 +291,34 @@ void executeOpcode(Chip8 *chip8, short opcode){
 
             // 8XY1 - Set VX to VX OR VY
             else if(N == 0x0001){
+
                 chip8->V[X] |= chip8->V[Y];
+
+                if(!(chip8->quirks & QUIRK_VF_RESET)){
+                    chip8->V[15] = 0;
+                }
             }
 
             // 8XY2 - Set VX to VX AND VY
             else if(N == 0x0002){
+
                 chip8->V[X] &= chip8->V[Y];
+
+                if(!(chip8->quirks & QUIRK_JUMP_REL)){
+                    chip8->V[15] = 0;
+                }
+
             }
 
             // 8XY3 - Set VX to VX XOR VY
             else if(N == 0x0003){
+
                 chip8->V[X] ^= chip8->V[Y];
+
+                if(!(chip8->quirks & QUIRK_JUMP_REL)){
+                    chip8->V[15] = 0;
+                }
+
             }
 
             // 8XY4 - Add the value of register VY to register VX
@@ -336,8 +355,15 @@ void executeOpcode(Chip8 *chip8, short opcode){
             //      - Set register VF to the least significant bit prior to the shift
             //      - VY is unchanged
             else if(N == 0x0006){
-                unsigned char lsb = chip8->V[Y] & 0x1;
-                chip8->V[X] = chip8->V[Y] >> 1;
+
+                // In the original behavior before shifting right copy VY to VX, with QUIRK_SIFT
+                // active simply perform the shift on VX
+                if(!(chip8->quirks & QUIRK_SHIFT)){
+                    chip8->V[X] = chip8->V[Y];
+                }
+
+                unsigned char lsb = chip8->V[X] & 0x1;
+                chip8->V[X] >>= 1;
 
                 chip8->V[15] = lsb;
             }
@@ -360,8 +386,13 @@ void executeOpcode(Chip8 *chip8, short opcode){
             //      - Set register VF to the most significant bit prior to the shift
             //      - VY is unchanged
             else if (N == 0x000E) {
-                unsigned char msb = (chip8->V[Y] & 0x80) >> 7;
-                chip8->V[X] = chip8->V[Y] << 1;
+
+                if(!(chip8->quirks & QUIRK_SHIFT)){
+                    chip8->V[X] = chip8->V[Y];
+                }
+
+                unsigned char msb = (chip8->V[X] & 0x80) >> 7;
+                chip8->V[X] <<= 1;
 
                 chip8->V[15] = msb;
             }
@@ -394,7 +425,14 @@ void executeOpcode(Chip8 *chip8, short opcode){
 
         case 0xB: {
             // BNNN - Jump to address NNN + V0
-            chip8->pc = chip8->V[0] + NNN;
+
+            // If quirk is active use VX otherwise use V0 to perform addition to NNN
+            // and assign the value to pc
+            unsigned char offset = chip8->quirks & QUIRK_JUMP_REL ?
+                chip8->V[X] :
+                chip8->V[0];
+
+            chip8->pc = offset + NNN;
         } break;
 
         // =====================================
@@ -533,7 +571,10 @@ void executeOpcode(Chip8 *chip8, short opcode){
                     chip8->memory[chip8->I + i] = chip8->V[i];
                 }
 
-                chip8->I = chip8->I + X + 1;
+                // If the quirk is not active, set I register, otherwise skip this step
+                if(!(chip8->quirks & QUIRK_LOAD_STORE)){
+                    chip8->I = chip8->I + X + 1;
+                }
             }
 
             // FX65 - Fill registers V0 to VX inclusive with the values stored in memory starting at address I
@@ -548,7 +589,10 @@ void executeOpcode(Chip8 *chip8, short opcode){
                     chip8->V[i] = chip8->memory[chip8->I + i];
                 }
 
-                chip8->I = chip8->I + X + 1;
+                 // If the quirk is not active, set I register, otherwise skip this step
+                if(!(chip8->quirks & QUIRK_LOAD_STORE)){
+                    chip8->I = chip8->I + X + 1;
+                }
             }
 
             else {
