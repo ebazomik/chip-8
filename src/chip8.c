@@ -151,11 +151,16 @@ void executeOpcode(Chip8 *chip8, short opcode){
     unsigned short NN  = opcode & 0x00FF;
     unsigned short NNN = opcode & 0x0FFF;
 
-    (void) X;
-    (void) Y;
-    (void) N;
-    (void) NN;
-    (void) NNN;
+
+    if(X >= 16){
+        LOG_ERROR_ARG("Invalid value for X: %d > 15", X);
+        exit(1);
+    }
+    if(Y >= 16){
+        LOG_ERROR_ARG("Invalid value for Y: %d > 15", Y);
+        exit(1);
+    }
+
 
     switch((opcode & 0xF000) >> 12){
 
@@ -171,7 +176,7 @@ void executeOpcode(Chip8 *chip8, short opcode){
             // 00EE - Return from subroutine
             else if (NN == 0x00EE){
                 // The return address is saved on top of the stack by instruction 2NNN
-                chip8->pc = chip8->stack[chip8->sp];
+                chip8->pc = chip8->stack[chip8->sp -1];
                 chip8->sp--;
             }
 
@@ -194,9 +199,6 @@ void executeOpcode(Chip8 *chip8, short opcode){
         case 0x2: {
             // 2NNN - Execute subroutine starting at address NNN
 
-            // Verify if stack space is full before save new return address
-            if(chip8->sp == 16) LOG_ERROR("Call stack overflow");
-
             chip8->stack[chip8->sp] = chip8->pc;
             chip8->sp++;
 
@@ -210,11 +212,6 @@ void executeOpcode(Chip8 *chip8, short opcode){
         case 0x3: {
             // 3XNN - Skip the following instruction if the value of register VX equals NN
 
-            if(X >= 16){
-                LOG_ERROR_ARG("3XNN, invalid value for X: %d > 15", X);
-                exit(1);
-            }
-
             if(chip8->V[X] == NN) chip8->pc += 2;
         } break;
 
@@ -222,11 +219,6 @@ void executeOpcode(Chip8 *chip8, short opcode){
 
         case 0x4: {
             // 4XNN - Skip the following instruction if the value of register VX is not equal to NN
-
-            if(X >= 16){
-                LOG_ERROR_ARG("4XNN, invalid value for X: %d > 15", X);
-                exit(1);
-            }
 
             if(chip8->V[X] != NN) chip8->pc += 2;
         } break;
@@ -236,16 +228,6 @@ void executeOpcode(Chip8 *chip8, short opcode){
         case 0x5: {
             // 5XY0 - Skip the following instruction if the value of register VX is equal to the value of register VY
 
-            if(X >= 16){
-                LOG_ERROR_ARG("5XNN, invalid value for X: %d > 15", X);
-                exit(1);
-            }
-
-            if(Y >= 16){
-                LOG_INFO_ARG("5XYN, invalid value for Y: %d > 15", Y);
-                exit(1);
-            }
-
             if(chip8->V[X] == chip8->V[Y]) chip8->pc += 2;
         } break;
 
@@ -254,11 +236,6 @@ void executeOpcode(Chip8 *chip8, short opcode){
         case 0x6: {
             // 6XNN - Store number NN in register VX
 
-            if(X >= 16){
-                LOG_ERROR_ARG("6XNN, invalid value for X: %d > 15", X);
-                exit(1);
-            }
-
             chip8->V[X] = NN;
         } break;
 
@@ -266,11 +243,6 @@ void executeOpcode(Chip8 *chip8, short opcode){
 
         case 0x7: {
             // 7XNN - Add the value NN to register VX
-
-            if(X >= 16){
-                LOG_ERROR_ARG("7XNN, invalid value for X: %d > 15", X);
-                exit(1);
-            }
 
             chip8->V[X] += NN;
         } break;
@@ -325,25 +297,25 @@ void executeOpcode(Chip8 *chip8, short opcode){
             //      - Set VF to 01 if a carry occurs
             //      - Set VF to 00 if a carry does not occur
             else if(N == 0x0004){
-                chip8->V[X] += chip8->V[Y];
+
+                unsigned short sum = (unsigned short)chip8->V[X] + (unsigned short)chip8->V[Y];
 
                 // Carry occurs when VX + VY > 255 (value overflow 8-bits register)
-                unsigned char carry = (chip8->V[X] + chip8->V[Y]) > 255;
-                if(carry){
-                    chip8->V[15] = 1;
-                } else {
-                    chip8->V[15] = 0;
-                }
+                chip8->V[X] = sum & 0xFF;
+                chip8->V[15] = (sum > 255) ? 1 : 0;
+
             }
 
             // 8XY5 - Subtract the value of register VY from register VX
             //      - Set VF to 00 if a borrow occurs
             //      - Set VF to 01 if a borrow does not occur
             else if(N == 0x0005){
-                chip8->V[X] = chip8->V[X] - chip8->V[Y];
 
                 // Borrow occurs when VX < VY
                 unsigned char noBorrow = chip8->V[X] >= chip8->V[Y];
+
+                chip8->V[X] = chip8->V[X] - chip8->V[Y];
+
                 if(noBorrow){
                     chip8->V[15] = 1;
                 } else {
@@ -374,8 +346,8 @@ void executeOpcode(Chip8 *chip8, short opcode){
             else if(N == 0x0007){
                 chip8->V[X] = chip8->V[Y] - chip8->V[X];
 
-                unsigned char notBorrow = chip8->V[Y] >= chip8->V[X];
-                if(notBorrow){
+                unsigned char noBorrow = chip8->V[Y] >= chip8->V[X];
+                if(noBorrow){
                     chip8->V[15] = 1;
                 } else {
                     chip8->V[15] = 0;
@@ -454,21 +426,21 @@ void executeOpcode(Chip8 *chip8, short opcode){
 
             chip8->V[15] = 0;
 
-            for (unsigned char row = 0; row <= N; row++){
+            for (unsigned char row = 0; row < N; row++){
                 // Reached max height of sprite
                 if(row + y >= CHIP8_SCREEN_HEIGHT) break;
                 unsigned char row_offset = chip8->memory[chip8->I + row];
 
                 for(unsigned char col = 0; col < 8; col++){
+                    if (x + col >= CHIP8_SCREEN_WIDTH) break;
                     unsigned char bit_value = row_offset & (0x80 >> col);
 
                     if(bit_value != 0){
-                        unsigned char bit_index = (x + col) + (y + row) * CHIP8_SCREEN_WIDTH;
-                        if(chip8->gfx[bit_index] == 1){
-                            chip8->V[15] = 1;
+                        if ((row_offset & (0x80 >> col)) != 0) {
+                            int idx = (x + col) + (y + row) * CHIP8_SCREEN_WIDTH;
+                            if (chip8->gfx[idx] == 1) chip8->V[15] = 1;
+                            chip8->gfx[idx] ^= 1;
                         }
-
-                        chip8->gfx[bit_index] ^= 1;
                     }
                 }
             }

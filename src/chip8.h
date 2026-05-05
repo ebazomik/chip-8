@@ -147,7 +147,7 @@ Chip8* initChip8();
 // For recover and read correct opcode, shift 8bit from first chunk of 8bit memory
 // and merge with next 8it chunk.
 #define GET_OPCODE(chip8) \
-    ((unsigned short)(chip8->memory[chip8->pc] << 8) | (unsigned short)(chip8->memory[chip8->pc]))
+    ((unsigned short)(chip8->memory[chip8->pc] << 8) | (unsigned short)(chip8->memory[chip8->pc +1]))
 
 void destroyChip8(Chip8* chip8);
 
