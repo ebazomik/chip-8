@@ -1,4 +1,5 @@
 #include "chip8.h"
+#include <SDL2/SDL_events.h>
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -125,6 +126,38 @@ void chip8Step(Chip8* chip8){
     executeOpcode(chip8, opcode);
 
     return;
+}
+
+void chip8UpdateTimers(Chip8 *chip8){
+
+    // CHIP-8 timers are updated at a steady rate of 60 Hz (60 times per
+    // second), regardless of how many instructions the CPU is executing
+    // per second.
+
+    // There exist two timers:
+
+    // - A delay timer, used by programmers to create pauses or time
+    // events. The program sets it to a value and it counts down to
+    // zero. While it is non-zero, the program can "poll" it to decide
+    // what to do next.
+
+    // - The Sound Timer, which is used to make the CHIP-8 buzzer emit a
+    // single-frequency beep as long as the timer value is greather
+    // than zero.
+
+    // For both timers the countdown stops once the zero value is
+    // reached. At this point the timer is not touched until the program
+    // executes instructions FX15 or FX16 to update the value of the
+    // timers.
+
+    if(chip8->delay_timer > 0){
+        chip8->delay_timer -= 1;
+    }
+
+    if(chip8->sound_timer > 0){
+        chip8->sound_timer -= 1;
+    }
+
 }
 
 
@@ -457,7 +490,7 @@ void executeOpcode(Chip8 *chip8, short opcode){
             //        to least 4 bits of register VX is pressed
             if(NN == 0x009E){
                 unsigned char key_index = chip8->V[X] & 0x0F;
-                if(chip8->key[key_index] == 1){
+                if(chip8->key[key_index] == CHIP8_KEY_DOWN){
                     chip8->pc += 2;
                 }
             }
@@ -466,7 +499,7 @@ void executeOpcode(Chip8 *chip8, short opcode){
             //        to least 4 bits register VX is not pressed
             else if(NN == 0x00A1){
                 unsigned char key_index = chip8->V[X] & 0x0F;
-                if(chip8->key[key_index] == 0){
+                if(chip8->key[key_index] == CHIP8_KEY_UP){
                     chip8->pc += 2;
                 }
             }
@@ -484,13 +517,14 @@ void executeOpcode(Chip8 *chip8, short opcode){
             // FX07 - Store the current value of the delay timer in register VX
             if(NN == 0x0007){
                 chip8->V[X] = chip8->delay_timer;
+                chip8->should_draw = 1;
             }
 
             // FX0A - Wait for a keypress and store the result in register VX
             else if(NN == 0x000A){
                 unsigned char key_pressed = 0;
                 for(unsigned char i = 0; i < 16; i++){
-                    if(chip8->key[i] != 0){
+                    if(chip8->key[i] == CHIP8_KEY_DOWN){
                         chip8->V[X] = i;
                         key_pressed = 1;
                         break;

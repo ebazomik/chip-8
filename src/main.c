@@ -2,7 +2,9 @@
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_render.h>
+#include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_video.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <SDL2/SDL.h>
 #include "chip8.h"
@@ -10,6 +12,10 @@
 //--------------------------------------
 // SDL LAYER
 //--------------------------------------
+
+#define FPS 60
+#define MILLISECS_PER_FRAME (1000 / FPS)
+#define INSTRUCTIONS_PER_FRAME 15
 
 #define MODIFIER 15
 #define SCREEN_WIDTH ((MODIFIER) * (CHIP8_SCREEN_WIDTH))
@@ -40,7 +46,7 @@ void initSDL(SDL_Window **window, SDL_Renderer **renderer){
 }
 
 void drawScreen(Chip8 *chip8, SDL_Renderer *renderer){
-    if(!(chip8->should_draw)) return;
+    if(!chip8->should_draw) return;
 
     SDL_RenderClear(renderer);
 
@@ -68,13 +74,58 @@ void drawScreen(Chip8 *chip8, SDL_Renderer *renderer){
     chip8->should_draw = 0;
 }
 
+
+CHIP8_KEY translateKey(SDL_Keycode sym) {
+    CHIP8_KEY key_index;
+    switch(sym) {
+        case SDLK_1: key_index = CHIP8_KEY_1; break;
+        case SDLK_2: key_index = CHIP8_KEY_2; break;
+        case SDLK_3: key_index = CHIP8_KEY_3; break;
+        case SDLK_q: key_index = CHIP8_KEY_Q; break;
+        case SDLK_w: key_index = CHIP8_KEY_W; break;
+        case SDLK_4: key_index = CHIP8_KEY_4; break;
+        case SDLK_e: key_index = CHIP8_KEY_E; break;
+        case SDLK_r: key_index = CHIP8_KEY_R; break;
+        case SDLK_a: key_index = CHIP8_KEY_A; break;
+        case SDLK_s: key_index = CHIP8_KEY_S; break;
+        case SDLK_d: key_index = CHIP8_KEY_D; break;
+        case SDLK_f: key_index = CHIP8_KEY_F; break;
+        case SDLK_z: key_index = CHIP8_KEY_Z; break;
+        case SDLK_x: key_index = CHIP8_KEY_X; break;
+        case SDLK_c: key_index = CHIP8_KEY_C; break;
+        case SDLK_v: key_index = CHIP8_KEY_V; break;
+        default: key_index = CHIP8_KEY_UNDEFINED; break;
+    }
+    return key_index;
+}
+
+
+
+
 void handle_input(Chip8 *chip8){
     SDL_Event event;
     while(SDL_PollEvent(&event)){
         switch(event.type){
             case SDL_QUIT:
-            chip8->is_running = 0;
-            break;
+                {
+                    chip8->is_running = 0;
+                } break;
+            case SDL_KEYDOWN:
+                {
+                    CHIP8_KEY key_index;
+                    key_index = translateKey(event.key.keysym.sym);
+                    if(key_index != CHIP8_KEY_UNDEFINED){
+                        chip8->key[key_index] = CHIP8_KEY_DOWN;
+                    }
+                } break;
+            case SDL_KEYUP:
+                {
+                    CHIP8_KEY key_index;
+                    key_index = translateKey(event.key.keysym.sym);
+                    if(key_index != CHIP8_KEY_UNDEFINED){
+                        chip8->key[key_index] = CHIP8_KEY_UP;
+                    }
+                } break;
         }
     }
 }
@@ -111,9 +162,21 @@ int main(int argc, char ** argv){
     //--------------------------------------
 
     while(chip8->is_running){
+        uint32_t startFrameTime = SDL_GetTicks();
+
         handle_input(chip8);
-        chip8Step(chip8);
+
+        for(int i = 0; i < INSTRUCTIONS_PER_FRAME; i++){
+            chip8Step(chip8);
+        }
+
+        chip8UpdateTimers(chip8);
         drawScreen(chip8, renderer);
+
+        uint32_t frameDuration = SDL_GetTicks() - startFrameTime;
+        if(frameDuration < MILLISECS_PER_FRAME){
+            SDL_Delay(MILLISECS_PER_FRAME - frameDuration);
+        }
     }
 
     //--------------------------------------

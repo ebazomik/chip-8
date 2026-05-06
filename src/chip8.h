@@ -101,6 +101,17 @@ enum CHIP8_KEY {
 
 typedef enum CHIP8_KEY CHIP8_KEY;
 
+
+
+enum CHIP8_KEY_VALUE{
+    CHIP8_KEY_UP = 0,
+    CHIP8_KEY_DOWN = 1
+};
+
+typedef enum CHIP8_KEY_VALUE CHIP8_KEY_VALUE;
+
+
+
 enum CHIP8_QUIRK {
     // 8XY6, 8XYE
     QUIRK_SHIFT = 0x1,
@@ -152,6 +163,8 @@ Chip8* initChip8();
 void destroyChip8(Chip8* chip8);
 
 void loadROMChip8(Chip8* chip8, char* rom);
+
+void chip8UpdateTimers(Chip8 *chip8);
 
 void chip8Step(Chip8* chip8);
 
