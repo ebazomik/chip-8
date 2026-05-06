@@ -1,7 +1,9 @@
+#include <SDL2/SDL_audio.h>
 #include <SDL2/SDL_error.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_render.h>
+#include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_video.h>
 #include <stdint.h>
@@ -20,6 +22,9 @@
 #define MODIFIER 15
 #define SCREEN_WIDTH ((MODIFIER) * (CHIP8_SCREEN_WIDTH))
 #define SCREEN_HEIGHT ((MODIFIER) * (CHIP8_SCREEN_HEIGHT))
+
+#define AMPLITUDE 3000
+#define FREQUENCY 440
 
 void initSDL(SDL_Window **window, SDL_Renderer **renderer){
 
@@ -99,7 +104,25 @@ CHIP8_KEY translateKey(SDL_Keycode sym) {
     return key_index;
 }
 
+void audioCallback(void* userdata, Uint8* stream, int len){
 
+    Chip8 *chip8 = (Chip8*) userdata;
+    Sint16 *buffer = (Sint16*) stream;
+    int length = len / 2;
+
+    static uint32_t sample_index = 0;
+
+    for(int i = 0; i < length; i++){
+        if(chip8->sound_timer == 0){
+            buffer[i] = 0;
+            sample_index = 0;
+        } else {
+            int half_period = 44100 / (FREQUENCY * 2);
+            buffer[i] = ((sample_index++ / half_period ) % 2) ? AMPLITUDE : -AMPLITUDE;
+        }
+
+    }
+}
 
 
 void handle_input(Chip8 *chip8){
@@ -156,6 +179,23 @@ int main(int argc, char ** argv){
 
     loadROMChip8(chip8, rom);
     LOG_INFO_ARG("[INFO] - loading ROM: %s", rom);
+
+    SDL_AudioSpec want, have;
+    SDL_zero(want);
+
+    want.freq = 44100;
+    want.format = AUDIO_S16SYS;
+    want.channels = 1;
+    want.samples = 4096;
+    want.userdata = chip8;
+    want.callback = audioCallback;
+
+    if(SDL_OpenAudio(&want, &have) < 0){
+        LOG_ERROR_ARG("Failed to open audio: %s", SDL_GetError());
+    }
+
+    SDL_PauseAudio(0);
+
 
     //--------------------------------------
     // Emulation
